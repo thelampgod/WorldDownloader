@@ -927,6 +927,48 @@ public class WDL {
 	}
 
 	/**
+	 * Calls saveChunk for all currently loaded chunks
+	 */
+	public void saveChunks() {
+		if (!WDLPluginChannels.canDownloadAtAll()) { return; }
+
+		WDLMessages.chatMessageTranslated(WDL.serverProps,
+				WDLMessageTypes.SAVING, "wdl.messages.saving.savingChunks");
+
+		// Get the list of loaded chunks
+		Object obj = ReflectionUtils.findAndGetPrivateField(worldClient.getChunkProvider(),
+				ChunkProviderClient.class,
+				VersionedFunctions.getChunkListClass());
+		List<Chunk> chunks;
+		if (obj instanceof List<?>) {
+			@SuppressWarnings("unchecked")
+			List<Chunk> chunkList = (List<Chunk>)obj;
+			chunks = new ArrayList<>(chunkList);
+		} else if (obj instanceof Map<?, ?>) {
+			@SuppressWarnings("unchecked")
+			Map<?, Chunk> chunkMap = (Map<?, Chunk>)obj;
+			chunks = new ArrayList<>(chunkMap.values());
+		} else {
+			// Shouldn't ever happen
+			throw new RuntimeException("Could not get ChunkProviderClient's chunk list: unexpected type for object " + obj);
+		}
+
+		for (int currentChunk = 0; currentChunk < chunks.size(); currentChunk++) {
+			Chunk c = chunks.get(currentChunk);
+			if (c != null) {
+				//Serverside restrictions check
+				if (!WDLPluginChannels.canSaveChunk(c)) {
+					continue;
+				}
+
+				saveChunk(c);
+			}
+		}
+		WDLMessages.chatMessageTranslated(WDL.serverProps,
+				WDLMessageTypes.SAVING, "wdl.messages.saving.chunksSaved");
+	}
+
+	/**
 	 * Import all non-overwritten TileEntities, then save the chunk
 	 */
 	public void saveChunk(Chunk c) {
